@@ -126,16 +126,35 @@ button{font:inherit;color:inherit;background:transparent;border:0}
   background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);background-size:3px 3px}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
-/* Buy buttons live in narrow table cells — give them real hit area */
-.gens td:last-child{width:110px;padding:4px 6px}
+/* Buy buttons live in the rightmost table cell — give them a *generous* hit
+   target so they're easy to click. The 2px border + darker hover stand out
+   clearly from the disabled rows. */
+.gens td:last-child{width:130px;padding:6px 8px}
 .gens .buy-btn{
-  display:block;width:100%;
-  padding:8px 6px;font-size:14px;
+  display:block;width:100%;box-sizing:border-box;
+  padding:12px 6px;
+  font-size:15px;font-weight:700;
   text-align:center;
-  border-width:2px;
+  border:2.5px solid var(--k);
+  border-radius:6px;
+  cursor:pointer;user-select:none;
+  background:var(--p);color:var(--k);
+  transition:background .08s,color .08s;
 }
 .gens .buy-btn:not(:disabled):hover{
   background:var(--k);color:var(--p);
+}
+.gens .buy-btn:not(:disabled):active{
+  transform:translateY(1px);
+}
+/* Disabled state: dimmer but still clearly non-actionable so the user
+   can SEE that this row is not yet affordable. Not just a faded gray. */
+.gens .buy-btn:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+  background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);
+  background-size:4px 4px;
+  color:var(--k);
 }
 
 /* Generator list */
@@ -229,8 +248,9 @@ dl.stats dt{font-weight:700}
   </div>
   <div id="toast" class="toast">CARRIER DETECTED</div>
 
-  <!-- HELPER.SYS desktop file (appears Act 1) -->
-  <div id="helperFile" class="desktop-file hidden" style="left:16px;top:60px"
+  <!-- HELPER.SYS desktop file (appears Act 1). Sits well below the menu bar so
+       it doesn't collide with Workshop's titlebar after the workshop is closed. -->
+  <div id="helperFile" class="desktop-file hidden" style="left:16px;top:140px"
        tabindex="0" role="button" aria-label="HELPER.SYS">
     <div class="ico"></div>
     <div class="lbl">HELPER.SYS<br><span id="helperSize">1 KB</span></div>
@@ -766,7 +786,7 @@ function refreshUI() {
   // Helper file
   if (state.helperShown) helperFileEl.classList.remove("hidden");
   else helperFileEl.classList.add("hidden");
-  helperSizeEl.textContent = state.helperSize + " KB";
+  helperSizeEl.textContent = fmtPair(state.helperSize);
   // Stats
   stCurrent.textContent = fmtPair(state.k);
   stLifetime.textContent = fmtPair(state.lifetime);
@@ -908,7 +928,7 @@ processBtn.addEventListener("keydown", e => {
 
 /* ---------- HELPER.SYS click ---------- */
 helperFileEl.addEventListener("click", () => {
-  showAlert("HELPER.SYS", `<p>This file is in use and cannot be opened.</p><p>Size: ${Math.round(state.helperSize)} KB</p>`);
+  showAlert("HELPER.SYS", `<p>This file is in use and cannot be opened.</p><p>Size: ${fmtPair(state.helperSize)}</p>`);
 });
 helperFileEl.addEventListener("keydown", e => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); helperFileEl.click(); }
