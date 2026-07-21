@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.md diff=markdown
+*.html diff=html
+*.swift diff=swift
+*.json diff=json
+*.yaml diff=yaml
+*.yml diff=yaml

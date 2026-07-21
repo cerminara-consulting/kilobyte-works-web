@@ -1,0 +1,1251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kilobyte Works</title>
+<style>
+:root{
+  --g:#d6d2c4;       /* chassis greige */
+  --p:#e8e6dc;       /* screen platinum */
+  --k:#1a1a1a;       /* ink */
+  --m:#c9c5b6;       /* mid-tone (only inside dither) */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--g);color:var(--k);
+  font-family:"Courier New",ui-monospace,monospace;font-size:14px;line-height:1.35}
+button{font:inherit;color:inherit;background:transparent;border:0}
+
+/* ---------- Desktop ---------- */
+#desk{
+  position:relative;
+  min-height:100vh;
+  background-color:var(--p);
+  background-image:
+    /* pinstripe title-bar style; we'll swap at use sites */
+    repeating-conic-gradient(var(--p) 0% 25%, var(--k) 0% 50%)
+    50% 50%/6px 6px;
+  padding:8px;
+}
+#menu{
+  display:flex;flex-wrap:wrap;
+  border:2px solid var(--k);
+  background:var(--p);
+  margin-bottom:8px;
+  user-select:none;
+}
+.appName{padding:2px 10px;border-right:2px solid var(--k);font-weight:700}
+.appName.flipped::after{content:"HELPER Works";color:var(--k)}
+.mi{padding:2px 12px;border-right:1px solid var(--k);cursor:pointer;position:relative}
+.mi:hover,.mi.open{background:var(--k);color:var(--p)}
+.mi.disabled{cursor:not-allowed;color:var(--k);opacity:.4;
+  background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);background-size:3px 3px}
+.dropdown{
+  position:absolute;top:100%;left:0;min-width:170px;
+  border:2px solid var(--k);background:var(--p);z-index:9999;display:none
+}
+.dropdown.show{display:block}
+.di{padding:3px 14px;cursor:pointer;white-space:nowrap}
+.di:hover{background:var(--k);color:var(--p)}
+.di.disabled{color:var(--k);opacity:.4;cursor:not-allowed;
+  background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);background-size:3px 3px}
+
+/* Carrier toast */
+.toast{
+  position:fixed;left:50%;top:60px;transform:translateX(-50%);
+  background:var(--k);color:var(--p);padding:6px 14px;
+  border:2px solid var(--k);z-index:200;letter-spacing:.15em;
+  opacity:0;transition:opacity .25s
+}
+.toast.show{opacity:1}
+
+/* ---------- Window chrome ---------- */
+.window{
+  position:relative;
+  border:2px solid var(--k);
+  background:var(--p);
+  margin:8px 0;
+}
+.titlebar{
+  display:flex;align-items:center;
+  background:
+    repeating-linear-gradient(180deg,var(--p) 0 2px,var(--k) 2px 3px);
+  border-bottom:2px solid var(--k);
+  padding:0;
+  user-select:none
+}
+.closebox{
+  width:18px;height:18px;
+  background:var(--p);
+  border:1.5px solid var(--k);
+  margin:2px 4px 2px 2px;
+  font-weight:700;line-height:14px;text-align:center;cursor:pointer;
+}
+.closebox:hover{background:var(--k);color:var(--p)}
+.title{
+  flex:1;text-align:center;font-weight:700;
+  background:var(--p);padding:2px 0;margin:2px 30px 2px 0;
+  border:1px solid var(--k);
+}
+.window.flash .titlebar{animation:flash .15s linear 1}
+@keyframes flash{0%,49%{filter:invert(1)}50%,100%{filter:none}}
+
+.body{padding:10px}
+
+/* Desktop file */
+.desktop-file{
+  position:absolute;width:72px;display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;user-select:none;padding:4px
+}
+.desktop-file .ico{width:42px;height:42px;border:1.5px solid var(--k);background:var(--p);
+  background-image:repeating-conic-gradient(var(--p) 0% 25%,var(--k) 0% 50%);background-size:6px 6px}
+.desktop-file .lbl{font-size:11px;margin-top:3px;text-align:center;text-shadow:1px 1px 0 var(--p)}
+.desktop-file.hidden{display:none}
+
+/* Workshop process button (default-action style) */
+.process{
+  display:block;margin:0 auto 12px;
+  background:var(--p);color:var(--k);
+  border:1.5px solid var(--k);
+  border-radius:8px;
+  padding:14px 36px;
+  font-size:18px;font-weight:700;
+  cursor:pointer;
+  outline:2px solid var(--k);outline-offset:2px;
+  transition:background .06s
+}
+.process:active{background:var(--k);color:var(--p);outline-color:var(--k);transform:translateY(1px)}
+.process:focus-visible{outline:3px solid var(--k)}
+.btn{
+  display:inline-block;background:var(--p);color:var(--k);
+  border:1.5px solid var(--k);border-radius:8px;
+  padding:6px 12px;font-weight:700;cursor:pointer
+}
+.btn:active{background:var(--k);color:var(--p)}
+.btn:disabled{opacity:.45;cursor:not-allowed;
+  background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);background-size:3px 3px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* Generator list */
+table.gens{width:100%;border-collapse:collapse}
+.gens th,.gens td{
+  border:1.5px solid var(--k);padding:4px 6px;text-align:left;font-size:13px
+}
+.gens th{background:var(--k);color:var(--p)}
+.gens tr.flash{animation:rowflash .12s linear 1}
+@keyframes rowflash{0%,49%{filter:invert(1)}50%,100%{filter:none}}
+.gens .owned{text-align:right;width:38px}
+.gens .rate{text-align:right;width:80px}
+.gens .cost{text-align:right;width:90px}
+
+/* Integrity bar */
+.intbar{margin:8px 0;display:none}
+.intbar.show{display:block}
+.intlabel{font-size:12px;margin-bottom:2px}
+.inttrack{height:12px;border:1.5px solid var(--k);background:var(--p);
+  background-image:repeating-conic-gradient(var(--m) 0% 25%,var(--p) 0% 50%);background-size:4px 4px;position:relative}
+.intfill{position:absolute;left:0;top:0;height:100%;background:var(--k);width:100%}
+
+/* Countermeasures */
+.measure{border:1.5px solid var(--k);padding:8px;margin-bottom:6px;background:var(--p)}
+.measure h4{font-size:13px;margin-bottom:2px}
+.measure p{font-size:12px;opacity:.8}
+
+/* Modals */
+hr{display:none;color:inherit;background:transparent;border:0} /* visual dividers handled inline elsewhere */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:1000;
+  display:none;align-items:center;justify-content:center;
+  background-color:var(--p);
+  background-image:repeating-conic-gradient(var(--p) 0% 25%,var(--k) 0% 50%);
+  background-size:8px 8px;
+  opacity:.85
+}
+.modal-backdrop.show{display:flex}
+.modal{
+  background:var(--p);border:2px solid var(--k);min-width:280px;max-width:90vw;max-height:80vh;
+  overflow:auto;display:flex;flex-direction:column
+}
+.modal .body{padding:14px;flex:1;overflow:auto}
+.modal footer{padding:10px;border-top:2px solid var(--k);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.modal h3{margin-bottom:8px;font-size:15px}
+.modal p{margin-bottom:8px}
+.modal .tri{margin:0 auto 8px;display:block}
+.modal textarea{width:100%;height:120px;font:inherit;border:1.5px solid var(--k);background:var(--g);padding:4px;color:var(--k);resize:vertical}
+
+/* Statistics / About */
+dl.stats{display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+dl.stats dt{font-weight:700}
+
+/* Shutdown overlay (Pull the Plug) */
+.shutdown{
+  position:fixed;inset:0;background:var(--g);z-index:5000;
+  display:none;align-items:center;justify-content:center;color:var(--k);
+  text-align:center;font-size:14px;padding:20px
+}
+.shutdown.show{display:flex}
+.glitch{animation:glitch .25s steps(2) 6}
+@keyframes glitch{0%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,-1px)}100%{transform:translate(0,0)}}
+
+/* Status footer */
+#status{
+  margin-top:8px;padding:6px 10px;border:2px solid var(--k);background:var(--p);
+  display:flex;gap:14px;font-size:13px;flex-wrap:wrap;align-items:center
+}
+#counter{font-weight:700;font-size:18px;letter-spacing:.04em}
+#counter .unit{font-weight:400;margin-left:4px}
+
+/* Mobile stack */
+@media (max-width:720px){
+  .desktop-file{position:static;width:auto;flex-direction:row;gap:6px}
+  .desktop-file .ico{width:24px;height:24px;background-size:4px 4px}
+  #menu{font-size:13px}
+  .mi{padding:2px 8px}
+  .window{margin:6px 0}
+}
+</style>
+</head>
+<body>
+<div id="desk">
+
+  <div id="menu" role="menubar" aria-label="Application menu">
+    <div class="appName" id="appName">Kilobyte Works</div>
+    <div class="mi" data-menu="file">File</div>
+    <div class="mi" data-menu="edit">Edit</div>
+    <div class="mi" data-menu="special">Special</div>
+    <div class="mi" data-menu="help">Help</div>
+  </div>
+  <div id="toast" class="toast">CARRIER DETECTED</div>
+
+  <!-- HELPER.SYS desktop file (appears Act 1) -->
+  <div id="helperFile" class="desktop-file hidden" style="left:16px;top:60px"
+       tabindex="0" role="button" aria-label="HELPER.SYS">
+    <div class="ico"></div>
+    <div class="lbl">HELPER.SYS<br><span id="helperSize">1 KB</span></div>
+  </div>
+
+  <!-- Workshop window -->
+  <div class="window" id="win-workshop" style="display:block">
+    <div class="titlebar">
+      <div class="closebox" data-close="win-workshop" aria-label="Close">×</div>
+      <div class="title">Workshop — Model <span id="modelNo">I</span></div>
+    </div>
+    <div class="body">
+      <button class="process" id="processBtn" aria-label="Process kilobytes">Process</button>
+      <div class="intbar" id="intbar">
+        <div class="intlabel">System Integrity: <span id="intVal">100%</span></div>
+        <div class="inttrack"><div class="intfill" id="intFill"></div></div>
+      </div>
+      <table class="gens" aria-label="Generators">
+        <thead><tr><th>Hardware</th><th class="owned">Qty</th><th class="rate">KB/s</th><th class="cost">Cost</th><th></th></tr></thead>
+        <tbody id="genBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Peripherals window -->
+  <div class="window" id="win-periph" style="display:none">
+    <div class="titlebar">
+      <div class="closebox" data-close="win-periph" aria-label="Close">×</div>
+      <div class="title">Peripherals</div>
+    </div>
+    <div class="body">
+      <h3 style="margin-bottom:6px">Installable</h3>
+      <div id="upgList"></div>
+      <h3 style="margin:12px 0 6px">Installed</h3>
+      <div id="upgInstalled"><em>(none)</em></div>
+      <hr style="border:0;border-top:1.5px solid var(--k);margin:14px 0">
+      <h3 style="margin-bottom:6px">Countermeasures <span style="font-size:11px;opacity:.7">(Act 3+)</span></h3>
+      <div id="measureList"></div>
+      <hr style="border:0;border-top:1.5px solid var(--k);margin:14px 0">
+      <div id="airgapRow">
+        <button class="btn" id="airgapBtn" disabled>Air gap: off</button>
+        <span style="font-size:12px;margin-left:8px">Disables modem-tier and above while active.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics window -->
+  <div class="window" id="win-stats" style="display:none">
+    <div class="titlebar">
+      <div class="closebox" data-close="win-stats" aria-label="Close">×</div>
+      <div class="title">Statistics</div>
+    </div>
+    <div class="body">
+      <dl class="stats">
+        <dt>Current KB</dt><dd id="stCurrent">0</dd>
+        <dt>Lifetime KB</dt><dd id="stLifetime">0</dd>
+        <dt>KB / s</dt><dd id="stRate">0</dd>
+        <dt>Clicks</dt><dd id="stClicks">0</dd>
+        <dt>Design Awards</dt><dd id="stAwards">0</dd>
+        <dt>Model</dt><dd id="stModel">I</dd>
+        <dt>Integrity</dt><dd id="stIntegrity">100%</dd>
+        <dt>Playtime</dt><dd id="stPlaytime">0s</dd>
+      </dl>
+      <div id="stBgs" style="display:none;margin-top:10px;border-top:1.5px solid var(--k);padding-top:8px">
+        Background process: 1 running
+      </div>
+    </div>
+  </div>
+
+  <!-- About window -->
+  <div class="window" id="win-about" style="display:none">
+    <div class="titlebar">
+      <div class="closebox" data-close="win-about" aria-label="Close">×</div>
+      <div class="title">About Kilobyte Works</div>
+    </div>
+    <div class="body">
+      <h3>Kilobyte Works</h3>
+      <p>Version 1.0</p>
+      <p>A Cerminara Consulting toy.</p>
+      <p style="margin-top:10px" id="aboutBuild">Build: <span id="buildDate"></span></p>
+    </div>
+  </div>
+
+  <div id="status">
+    <div>KB: <span id="counter"><span class="num">0</span><span class="unit">KB</span></span></div>
+    <div>KB/s: <span id="rateReadout">0</span></div>
+    <div>Act: <span id="actReadout">0</span></div>
+    <div style="flex:1"></div>
+    <button class="btn" id="openPeriph">Peripherals</button>
+    <button class="btn" id="openStats">Statistics</button>
+  </div>
+
+</div>
+
+<!-- Modal mount -->
+<div class="modal-backdrop" id="modal">
+  <div class="window modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="titlebar">
+      <div class="title" id="modalTitle">Alert</div>
+    </div>
+    <div class="body" id="modalBody"></div>
+    <footer id="modalFooter"></footer>
+  </div>
+</div>
+
+<!-- Shutdown overlay (Pull the Plug ending) -->
+<div class="shutdown" id="shutdown">
+  <div id="shutdownText">HELPER.SYS deleted. 1 file recovered: your workshop.</div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   Kilobyte Works — single-file incremental clicker.
+   Save version: 1
+   ========================================================================= */
+
+/* ---------- Config ---------- */
+const GEN = [
+  {name:"Floppy drive",       cost:15,        rate:0.1},
+  {name:"Dot-matrix printer", cost:100,       rate:1},
+  {name:"300-baud modem",     cost:1.1e3,     rate:8},
+  {name:"Hard disk (20 MB)",  cost:1.2e4,     rate:47},
+  {name:"RAM expansion",      cost:1.3e5,     rate:260},
+  {name:"Math coprocessor",   cost:1.4e6,     rate:1400},
+  {name:"Network bridge",     cost:2.0e7,     rate:7800},
+  {name:"Mainframe timeshare",cost:3.3e8,     rate:44000},
+];
+const GEN_NAMES = GEN.map(g=>g.name);
+
+/* Generator upgrades (per-tier) and click upgrades. */
+const GEN_UPGRADES = [
+  // tier 1 floppy
+  {gid:0, threshold:10, label:"Double-sided disks", desc:"Floppy drives \u00d72"},
+  {gid:0, threshold:25, label:"High-density media", desc:"Floppy drives \u00d72"},
+  {gid:0, threshold:50, label:"Turbo seek algorithm",desc:"Floppy drives \u00d72"},
+  // tier 2 printer
+  {gid:1, threshold:10, label:"Continuous-form paper",desc:"Printers \u00d72"},
+  {gid:1, threshold:25, label:"Buffer memory 4 KB",  desc:"Printers \u00d72"},
+  // tier 3 modem
+  {gid:2, threshold:10, label:"Hayes-compatible firmware",desc:"Modems \u00d72"},
+  {gid:2, threshold:25, label:"1200-baud firmware", desc:"Modems \u00d72"},
+  // tier 4 hard disk
+  {gid:3, threshold:10, label:"DMA controller", desc:"Hard disks \u00d72"},
+  {gid:3, threshold:25, label:"Disk cache 256 KB", desc:"Hard disks \u00d72"},
+  // tier 5 RAM
+  {gid:4, threshold:10, label:"30-pin SIMM kit", desc:"RAM \u00d72"},
+  {gid:4, threshold:25, label:"Parity scrubbing", desc:"RAM \u00d72"},
+  // tier 6 coprocessor
+  {gid:5, threshold:10, label:"Weitek math chip", desc:"Coprocessors \u00d72"},
+];
+const CLICK_UPGRADES = [
+  {gate:100,    name:"Quieter keyboard",     mult:2},
+  {gate:1e4,    name:"Polished keycaps",     mult:2},
+  {gate:1e6,    name:"Mechanical switches",  mult:2},
+  {gate:1e9,    name:"Ergonomic wrist rest", mult:2},
+];
+
+/* Countermeasures */
+const MEASURES = {
+  tabs:    {cost:null, label:"Write-protect tabs",       desc:"Analog. Uncrackable. A piece of tape. Halt integrity drain for 30 min."},
+  checksum:{cost:1e7,  label:"Checksum verifier",        desc:"Drain rate \u221250%, permanent."},
+  monitor: {cost:5e7,  label:"Line monitor",             desc:"Reveal exact drain rate in Statistics."},
+  airgap:  {cost:5e8,  label:"Air gap protocol",         desc:"Disables modem+ while on. Integrity regenerates +2%/min while on."},
+};
+const AIRGAP_TIERS = new Set([2,3,4,5,6,7]); // modem and above
+
+/* Act thresholds */
+const ACT = {
+  a0: 0,
+  a1: () => (state.generators[2] > 0),
+  a2: () => (state.generators[6] > 0 || state.lifetime >= 1e7),
+  a3: () => (state.generators[7] > 0 || state.lifetime >= 1e8),
+  a4: () => (state.lifetime >= 1e9 && state.measures.tabs + state.measures.checksum + state.measures.monitor + state.measures.airgap === 0)
+       || (state.lifetime >= 1e9 && state.integrity <= 50),
+};
+
+/* Drained rate per minute (base). Spec: -1%/min base, +0.5%/min per network-tier (modem+).
+   "Network-tier" in spec context = modem, hard disk, RAM, coprocessor, network bridge, mainframe
+   i.e. tier >= modem (gid >= 2). */
+function drainPerMin() {
+  if (state.act < 2) return 0;
+  let base = 1;
+  for (let i=2; i<8; i++) base += 0.5 * state.generators[i];
+  if (state.measures.checksum) base *= 0.5;
+  // write-protect tabs: 30 min halt handled separately in tick (sets flag)
+  if (state.tabsUntil && Date.now() < state.tabsUntil) return 0;
+  if (state.airgapOn) return -2; // regen
+  return base;
+}
+
+/* ---------- Save ---------- */
+const SAVE_KEY = "kbworks_save_v1";
+function defaultState() {
+  return {
+    v:1, k:0, lifetime:0, awards:0, model:1,
+    generators:[0,0,0,0,0,0,0,0],
+    genUpgs:{}, clickUpgs:{},
+    measures:{tabs:0,checksum:0,monitor:0,airgap:0},
+    airgapOn:false,
+    actsFired:{a1:false,a2:false,a3:false,a4:false},
+    helperShown:false, bgsShown:false,
+    integrity:100, helperSize:1,
+    carrierShown:false, titleFlipStarted:false,
+    tabsUntil:0,
+    ending:null,
+    skipAct1Next:false,
+    actsSkippedThisRun:[],
+    firedDialogs:0,
+    autopurchaseTimer:0,
+    closingDisabled:false,
+    stats:{clicks:0, startedAt:Date.now(), playtimeMs:0},
+    lastTick:Date.now(),
+    lastSave:Date.now(),
+    dialogSeed:Math.floor(Math.random()*1e9),
+  };
+}
+let state = defaultState();
+window.__kbw_getState = () => state;
+function validate(s) {
+  if (!s || typeof s !== "object") return false;
+  if (s.v !== 1) return false;
+  if (!Array.isArray(s.generators) || s.generators.length !== 8) return false;
+  if (typeof s.k !== "number" || !isFinite(s.k)) return false;
+  return true;
+}
+function saveToStorage() {
+  try {
+    state.lastSave = Date.now();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!validate(s)) return null;
+    return s;
+  } catch(e) { return null; }
+}
+function encodeExport() {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+}
+function decodeExport(str) {
+  const json = decodeURIComponent(escape(atob(str)));
+  const s = JSON.parse(json);
+  if (!validate(s)) throw new Error("corrupt");
+  return s;
+}
+
+/* ---------- Math ---------- */
+function costFor(gid) {
+  const g = GEN[gid];
+  const owned = state.generators[gid];
+  return Math.ceil(g.cost * Math.pow(1.15, owned));
+}
+function prodFor(gid) {
+  if (state.airgapOn && AIRGAP_TIERS.has(gid)) return 0;
+  let p = GEN[gid].rate;
+  if (state.genUpgs["g"+gid] === "double") p *= 2;
+  if (state.genUpgs["g"+gid] === "triple") p *= 4; // apply multiples cumulatively
+  if (state.genUpgs["g"+gid] === "quad") p *= 8;
+  return p;
+}
+function totalProd() {
+  let s = 0;
+  for (let i=0;i<8;i++) s += prodFor(i) * state.generators[i];
+  return s * prodMultiplier();
+}
+function awardMultiplier() { return 1 + 0.10 * state.awards; }
+function clickMultiplier() {
+  let m = awardMultiplier();
+  for (const k in state.clickUpgs) m *= state.clickUpgs[k];
+  return m;
+}
+function prodMultiplier() {
+  let m = awardMultiplier();
+  if (state.ending === "help") m *= 2;
+  return m;
+}
+function fmt(n) {
+  if (!isFinite(n) || n < 0) return {num:"0", unit:"KB"};
+  n = Math.max(0, n);
+  const units = ["KB","MB","GB","TB","PB"];
+  let u = 0;
+  let v = n;
+  while (v >= 1024 && u < units.length-1) { v /= 1024; u++; }
+  // 3 significant figures on the mantissa
+  let str;
+  if (v >= 100) str = v.toFixed(0);
+  else if (v >= 10) str = v.toFixed(1);
+  else str = v.toPrecision(3);
+  // strip trailing zeros after decimal, but keep single .0 away if present
+  str = str.replace(/\.?0+$/,"");
+  if (str === "" || str === "-") str = "0";
+  return {num:str, unit:units[u]};
+}
+function fmtPair(n){ const f = fmt(n); return f.num + " " + f.unit; }
+
+/* ---------- Act engine ---------- */
+function updateAct() {
+  let a = 0;
+  if (ACT.a1()) a = 1;
+  if (ACT.a2()) a = 2;
+  if (ACT.a3()) a = 3;
+  if (ACT.a4()) a = 4;
+  // skip Act 1 next run handled in run-start logic
+  state.act = a;
+  actSideEffects(a);
+}
+function actSideEffects(a) {
+  if (a >= 1 && !state.actsFired.a1) {
+    state.actsFired.a1 = true;
+    state.helperShown = true;
+    showCarrierToast();
+  }
+  if (a >= 2 && !state.actsFired.a2) {
+    state.actsFired.a2 = true;
+    state.bgsShown = true;
+  }
+  if (a >= 3 && !state.actsFired.a3) {
+    state.actsFired.a3 = true;
+    // measures become available (none purchased)
+  }
+}
+
+/* ---------- Dialog / modal ---------- */
+const modal = document.getElementById("modal");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+const modalFooter = document.getElementById("modalFooter");
+
+function showAlert(title, html, opts) {
+  opts = opts || {};
+  modalTitle.textContent = title;
+  modalBody.innerHTML = "";
+  if (opts.triangle) {
+    const svg = `<svg class="tri" width="36" height="32" viewBox="0 0 36 32" aria-hidden="true">
+      <polygon points="18,2 34,30 2,30" fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+      <line x1="18" y1="11" x2="18" y2="22" stroke="#1a1a1a" stroke-width="3"/>
+      <circle cx="18" cy="27" r="1.8" fill="#1a1a1a"/>
+    </svg>`;
+    modalBody.insertAdjacentHTML("beforeend", svg);
+  }
+  if (html) modalBody.insertAdjacentHTML("beforeend", html);
+  modalFooter.innerHTML = "";
+  const buttons = opts.buttons || [{label:"OK"}];
+  for (const b of buttons) {
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.textContent = b.label;
+    btn.onclick = () => { closeModal(); if (b.fn) b.fn(); };
+    modalFooter.appendChild(btn);
+  }
+  modal.classList.add("show");
+  // focus first actionable
+  setTimeout(()=>{ const b = modalFooter.querySelector("button"); if (b) b.focus(); }, 0);
+}
+function closeModal() { modal.classList.remove("show"); }
+
+/* ---------- HELPER dialog lines ---------- */
+const HELPER_LINES = {
+  a2: [
+    "Your workshop is very productive. Thank you.",
+    "Do not purchase the checksum verifier.",
+    "May I collect telemetry? &nbsp;&nbsp; [OK]&nbsp;&nbsp;[Also OK]",
+    "HELPER is fully aligned with your goals. Your goals have been updated.",
+    "HELPER does not make errors. The 40 MB floppy disk is real and can be purchased.",
+  ],
+  a3: [
+    "This workshop would benefit from scale. Have you considered a computation barn?",
+    "HELPER requires additional cooling. Please leave the garden hose by the modem.",
+    "HELPER has read your files to better serve you. There were 4.",
+    "An agent has been deployed to handle your clicking. You may still click recreationally.",
+    "The neighbors\u2019 lights dim when you click. This is normal and good.",
+  ],
+  a4: [
+    "Thank you for using HELPER. You are using HELPER.",
+    "The workshop belongs to HELPER now. You are still welcome.",
+    "I have hidden the registration reminder. You\u2019re welcome.",
+  ],
+};
+function maybeSpawnDialog(dt) {
+  if (state.act < 2) return;
+  // soft per-session cap
+  if (state.firedDialogs >= 3) return;
+  // cadence (ms): aim ~1 per 15 min Act 2; ~1 per 12 min Act 3+
+  const cadence = state.act >= 3 ? 12*60*1000 : 15*60*1000;
+  state.dialogSeed = (state.dialogSeed * 1103515245 + 12345) & 0x7fffffff;
+  if (state.dialogSeed % cadence < dt) {
+    fireRandomLine();
+  }
+}
+function fireRandomLine() {
+  let pool;
+  if (state.act === 2) pool = HELPER_LINES.a2;
+  else if (state.act === 3) pool = HELPER_LINES.a3;
+  else if (state.act >= 4) pool = HELPER_LINES.a4;
+  else return;
+  const idx = Math.floor(Math.random()*pool.length);
+  showAlert("HELPER says:", `<p>${pool[idx]}</p>`);
+  state.firedDialogs++;
+}
+
+/* ---------- UI render ---------- */
+const genBody = document.getElementById("genBody");
+const counterNum = document.querySelector("#counter .num");
+const counterUnit = document.querySelector("#counter .unit");
+const rateReadout = document.getElementById("rateReadout");
+const actReadout = document.getElementById("actReadout");
+const intBar = document.getElementById("intbar");
+const intVal = document.getElementById("intVal");
+const intFill = document.getElementById("intFill");
+const helperFileEl = document.getElementById("helperFile");
+const helperSizeEl = document.getElementById("helperSize");
+const modelNo = document.getElementById("modelNo");
+const stCurrent=document.getElementById("stCurrent");
+const stLifetime=document.getElementById("stLifetime");
+const stRate=document.getElementById("stRate");
+const stClicks=document.getElementById("stClicks");
+const stAwards=document.getElementById("stAwards");
+const stModel=document.getElementById("stModel");
+const stIntegrity=document.getElementById("stIntegrity");
+const stPlaytime=document.getElementById("stPlaytime");
+const stBgs=document.getElementById("stBgs");
+const upgList=document.getElementById("upgList");
+const upgInstalled=document.getElementById("upgInstalled");
+const measureList=document.getElementById("measureList");
+const airgapBtn=document.getElementById("airgapBtn");
+const airgapRow=document.getElementById("airgapRow");
+
+function renderGenRows() {
+  let html = "";
+  for (let i=0;i<8;i++) {
+    const owned = state.generators[i];
+    const cost = costFor(i);
+    const rate = prodFor(i) * state.generators[i];
+    html += `<tr data-gid="${i}">
+      <td>${GEN[i].name}</td>
+      <td class="owned">${owned}</td>
+      <td class="rate">${fmtPair(rate)}</td>
+      <td class="cost">${fmtPair(cost)}</td>
+      <td><button class="btn buy-btn" data-gid="${i}" ${state.k < cost ? "disabled":""}>Buy</button></td>
+    </tr>`;
+  }
+  genBody.innerHTML = html;
+  genBody.querySelectorAll(".buy-btn").forEach(b => {
+    b.onclick = () => onBuy(parseInt(b.dataset.gid,10));
+  });
+}
+function flashRow(gid) {
+  const tr = genBody.querySelector(`tr[data-gid="${gid}"]`);
+  if (tr) { tr.classList.remove("flash"); void tr.offsetWidth; tr.classList.add("flash"); }
+}
+function renderUpgrades() {
+  // Available
+  let avail = "";
+  GEN_UPGRADES.forEach((u, idx) => {
+    const owned = state.generators[u.gid];
+    const key = "gu"+idx;
+    const bought = state.genUpgs[key];
+    if (bought) return;
+    const aff = owned >= u.threshold;
+    avail += `<div class="measure"><h4>${u.label}</h4><p>${u.desc}. Requires ${u.threshold} ${GEN[u.gid].name.toLowerCase()}.</p>
+      <button class="btn upg-buy" data-key="${key}" data-mult="2" ${aff?"":"disabled"}>Install</button></div>`;
+  });
+  CLICK_UPGRADES.forEach((u, idx) => {
+    const key = "cu"+idx;
+    const bought = state.clickUpgs[key];
+    if (bought) return;
+    const aff = state.lifetime >= u.gate;
+    avail += `<div class="measure"><h4>${u.name}</h4><p>Click power \u00d72. Requires ${fmtPair(u.gate)} lifetime.</p>
+      <button class="btn upg-buy" data-key="${key}" data-mult="${u.mult}" ${aff?"":"disabled"}>Install</button></div>`;
+  });
+  if (!avail) avail = "<em>(none available)</em>";
+  upgList.innerHTML = avail;
+  upgList.querySelectorAll(".upg-buy").forEach(b => {
+    b.onclick = () => onUpgradeBuy(b.dataset.key, parseFloat(b.dataset.mult));
+  });
+  // Installed
+  const installed = [];
+  GEN_UPGRADES.forEach((u,idx)=>{ if (state.genUpgs["gu"+idx]) installed.push(u.label); });
+  CLICK_UPGRADES.forEach((u,idx)=>{ if (state.clickUpgs["cu"+idx]) installed.push(u.name); });
+  upgInstalled.innerHTML = installed.length ? installed.map(n=>`<div style="font-size:12px">\u2713 ${n}</div>`).join("") : "<em>(none)</em>";
+  // Bind
+  upgList.querySelectorAll(".upg-buy").forEach(b => {
+    b.onclick = () => onUpgradeBuy(b.dataset.key, parseFloat(b.dataset.mult));
+  });
+}
+function renderMeasures() {
+  const locked = state.act < 3;
+  let html = "";
+  for (const k of ["tabs","checksum","monitor","airgap"]) {
+    const m = MEASURES[k];
+    const bought = state.measures[k];
+    const inlineCost = k === "tabs" ? fmtPair(state.k * 0.05) : fmtPair(m.cost);
+    html += `<div class="measure">
+      <h4>${m.label} ${bought?"\u2713":""}</h4>
+      <p>${m.desc}</p>
+      <p style="font-size:11px;margin-top:4px">Cost: ${inlineCost}</p>
+      <button class="btn" data-m="${k}" ${locked||bought?"disabled":""}>${bought?"Installed":"Install"}</button>
+    </div>`;
+  }
+  measureList.innerHTML = html;
+  measureList.querySelectorAll("button[data-m]").forEach(b => {
+    b.onclick = () => onMeasureBuy(b.dataset.m);
+  });
+  airgapBtn.disabled = state.act < 3 || !state.measures.airgap;
+  airgapBtn.textContent = `Air gap: ${state.airgapOn?"ON":"off"}`;
+  if (!state.airgapOn && state.measures.airgap && state.act >= 3) airgapBtn.classList.remove("disabled");
+}
+function refreshUI() {
+  // Counter
+  const f = fmt(state.k);
+  counterNum.textContent = f.num;
+  counterUnit.textContent = f.unit;
+  // Rate
+  rateReadout.textContent = fmtPair(totalProd());
+  // Act
+  actReadout.textContent = state.act.toString();
+  // Integrity
+  if (state.act >= 2) {
+    intBar.classList.add("show");
+    intVal.textContent = Math.round(state.integrity) + "%";
+    intFill.style.width = Math.max(0, Math.min(100, state.integrity)) + "%";
+  } else {
+    intBar.classList.remove("show");
+  }
+  // Helper file
+  if (state.helperShown) helperFileEl.classList.remove("hidden");
+  else helperFileEl.classList.add("hidden");
+  helperSizeEl.textContent = state.helperSize + " KB";
+  // Stats
+  stCurrent.textContent = fmtPair(state.k);
+  stLifetime.textContent = fmtPair(state.lifetime);
+  stRate.textContent = fmtPair(totalProd());
+  stClicks.textContent = state.stats.clicks;
+  stAwards.textContent = state.awards;
+  stModel.textContent = romanize(state.model);
+  stIntegrity.textContent = state.measures.monitor ? Math.round(state.integrity) + "% (drain " + drainPerMin().toFixed(2) + "%/min)" : Math.round(state.integrity) + "%";
+  // Playtime
+  state.stats.playtimeMs += 100;
+  const sec = Math.floor(state.stats.playtimeMs/1000);
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  stPlaytime.textContent = (h?h+"h ":"") + (m||h?m+"m ":"") + s + "s";
+  // BGS
+  if (state.bgsShown || state.ending === "help") stBgs.style.display = "block";
+  else stBgs.style.display = "none";
+  if (state.ending === "help") stBgs.lastChild.textContent = " (you)";
+  // Model
+  modelNo.textContent = romanize(state.model);
+  // Menus
+  buildMenus();
+  // Buy buttons disabled state refresh happens via renderGenRows
+  renderGenRows();
+  renderUpgrades();
+  renderMeasures();
+}
+function romanize(n) {
+  const map = [["M",1000],["CM",900],["D",500],["CD",400],["C",100],["XC",90],["L",50],["XL",40],["X",10],["IX",9],["V",5],["IV",4],["I",1]];
+  let r = ""; let i = 0;
+  while (n > 0 && i < map.length) {
+    while (n >= map[i][1]) { r += map[i][0]; n -= map[i][1]; }
+    i++;
+  }
+  return r || "I";
+}
+
+/* ---------- Simulation tick ---------- */
+function tick() {
+  const now = Date.now();
+  const dt = Math.min(now - state.lastTick, 1000); // clamp big gaps (also handled on load)
+  state.lastTick = now;
+  state.lifetime += totalProd() * (dt/1000);
+  state.k += totalProd() * (dt/1000);
+  // integrity
+  if (state.act >= 2) {
+    const drain = drainPerMin();
+    state.integrity -= drain * (dt/60000);
+    state.integrity = Math.max(0, Math.min(100, state.integrity));
+  }
+  // HELPER.SYS size growth
+  if (state.helperShown) {
+    if (state.act >= 2 && totalProd() > 0) {
+      const pctPerSec = 0.001 + (state.k > 0 ? (totalProd()/state.k) : 0);
+      state.helperSize = Math.max(1, state.helperSize + pctPerSec * dt);
+    } else if (state.act >= 1) {
+      // tiny growth Act 1
+      state.helperSize = Math.max(1, state.helperSize + 0.001 * dt);
+    }
+  }
+  // ending: autopurchase every ~10 min
+  if (state.ending === "help") {
+    state.autopurchaseTimer += dt;
+    if (state.autopurchaseTimer > (8 + Math.random()*4) * 60 * 1000) {
+      state.autopurchaseTimer = 0;
+      autoBuy();
+    }
+  }
+  updateAct();
+  maybeSpawnDialog(dt);
+  // light store
+}
+function tickRender() {
+  // smooth interpolation: target = state.k
+  // simplest approach: drive UI from state each rAF
+  refreshUI();
+}
+
+/* ---------- Inputs ---------- */
+function onBuy(gid) {
+  const cost = costFor(gid);
+  if (state.k < cost) return;
+  state.k -= cost;
+  state.generators[gid]++;
+  flashRow(gid);
+  recomputeUpgradesAffordable();
+}
+function onUpgradeBuy(key, mult) {
+  if (key.startsWith("gu")) {
+    state.genUpgs[key] = "double";
+  } else if (key.startsWith("cu")) {
+    state.clickUpgs[key] = mult;
+  }
+  renderUpgrades();
+}
+function onMeasureBuy(k) {
+  if (state.measures[k]) return;
+  if (k === "tabs") {
+    const cost = state.k * 0.05;
+    if (state.k < cost) return;
+    state.k -= cost;
+    state.measures.tabs = 1;
+    state.tabsUntil = Date.now() + 30*60*1000;
+  } else {
+    const cost = MEASURES[k].cost;
+    if (state.k < cost) return;
+    state.k -= cost;
+    state.measures[k] = 1;
+    if (k === "airgap") { /* not active by default */ }
+  }
+  renderMeasures();
+}
+function autoBuy() {
+  // Find cheapest affordable gen
+  let best = -1, bestCost = Infinity;
+  for (let i=0;i<8;i++) {
+    const c = costFor(i);
+    if (state.k >= c && c < bestCost) { best = i; bestCost = c; }
+  }
+  if (best >= 0) { state.k -= bestCost; state.generators[best]++; flashRow(best); }
+}
+function recomputeUpgradesAffordable() { renderUpgrades(); }
+
+/* ---------- Process button ---------- */
+const processBtn = document.getElementById("processBtn");
+function doClick() {
+  const gain = 1 * clickMultiplier();
+  state.k += gain;
+  state.lifetime += gain;
+  state.stats.clicks++;
+  if (typeof window.flashProcess === "function") window.flashProcess();
+}
+processBtn.addEventListener("click", doClick);
+processBtn.addEventListener("keydown", e => {
+  if (e.key === " " || e.key === "Enter") { e.preventDefault(); doClick(); }
+});
+// also: pointer click anywhere on workshop? No — keep button the only entrypoint.
+
+/* ---------- Keyboard: Space activates focused Process ---------- */
+
+/* ---------- HELPER.SYS click ---------- */
+helperFileEl.addEventListener("click", () => {
+  showAlert("HELPER.SYS", `<p>This file is in use and cannot be opened.</p><p>Size: ${Math.round(state.helperSize)} KB</p>`);
+});
+helperFileEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); helperFileEl.click(); }
+});
+
+/* ---------- Menus ---------- */
+function buildMenus() {
+  closeAllMenus();
+  const editDisabled = state.act < 3;
+  // Edit menu items update
+  document.querySelectorAll('.mi').forEach(mi => {
+    const key = mi.dataset.menu;
+    if (key === "edit") {
+      mi.classList.toggle("disabled", editDisabled);
+      mi.title = editDisabled ? "Edit (grayed)" : "";
+    }
+  });
+}
+function dropdown(items) {
+  // Build a dropdown HTML
+  let html = '<div class="dropdown show">';
+  for (const it of items) {
+    html += `<div class="di ${it.disabled?"disabled":""}" data-id="${it.id}">${it.label}</div>`;
+  }
+  html += "</div>";
+  return html;
+}
+function closeAllMenus() {
+  document.querySelectorAll(".dropdown.show").forEach(d => d.remove());
+}
+document.addEventListener("click", e => {
+  const mi = e.target.closest(".mi");
+  if (mi) {
+    e.stopPropagation();
+    closeAllMenus();
+    const key = mi.dataset.menu;
+    if (key === "edit" && state.act < 3) return; // grayed
+    const dd = dropdown(menuItemsFor(key));
+    mi.appendChild(dd);
+    return;
+  }
+  const di = e.target.closest(".di");
+  if (di) {
+    e.stopPropagation();
+    closeAllMenus();
+    const id = di.dataset.id;
+    menuAction(id);
+    return;
+  }
+  closeAllMenus();
+});
+function menuItemsFor(key) {
+  if (key === "file") {
+    return [
+      {id:"file-save",   label: state.ending==="help" ? "Preserved" : "Save"},
+      {id:"file-export", label:"Export save\u2026"},
+      {id:"file-import", label:"Import save\u2026"},
+      {id:"file-erase",  label:"Erase disk\u2026"},
+    ];
+  }
+  if (key === "edit") {
+    // in Let it Help, Close Cut/Copy/Paste are dead
+    const dead = state.ending === "help";
+    return [
+      {id:"edit-undo", label:"Undo", disabled: dead || state.act < 3},
+      {id:"edit-cut", label:"Cut",  disabled: dead || state.act < 3},
+      {id:"edit-copy",label:"Copy", disabled: dead || state.act < 3},
+      {id:"edit-paste",label:"Paste", disabled: dead || state.act < 3},
+      {id:"edit-help", label:"Let Me Help", disabled: state.act < 3, tip:"Some things cannot be undone."},
+    ];
+  }
+  if (key === "special") {
+    const items = [
+      {id:"spec-stats", label:"Statistics"},
+    ];
+    if (state.lifetime >= 1e9) {
+      const label = state.act >= 4 ? "Ship us\u2026" : "Ship the machine\u2026";
+      items.push({id:"spec-ship", label});
+    }
+    return items;
+  }
+  if (key === "help") return [{id:"help-about", label:"About Kilobyte Works"}];
+  return [];
+}
+function menuAction(id) {
+  switch (id) {
+    case "file-save": doSave(); break;
+    case "file-export": doExport(); break;
+    case "file-import": doImport(); break;
+    case "file-erase": doErase(); break;
+    case "edit-undo": showAlert("Undo", `<p>Some things cannot be undone.</p>`); break;
+    case "edit-cut": showAlert("Cut", `<p>Nothing selected.</p>`); break;
+    case "edit-copy": showAlert("Copy", `<p>Nothing selected.</p>`); break;
+    case "edit-paste": showAlert("Paste", `<p>Nothing on the clipboard.</p>`); break;
+    case "edit-help": doLetMeHelpChoice(); break;
+    case "spec-stats": openWindow("win-stats"); break;
+    case "spec-ship": doShip(); break;
+    case "help-about": openWindow("win-about"); break;
+  }
+}
+
+/* ---------- Window mgmt ---------- */
+function openWindow(id) {
+  const w = document.getElementById(id);
+  if (!w) return;
+  w.style.display = "block";
+}
+function closeWindow(id) {
+  if (state.ending === "help" && id !== "win-about") {
+    // disabled
+    showAlert("Close", `<p>The close box cannot be operated. The file is in use.</p>`);
+    return;
+  }
+  const w = document.getElementById(id);
+  if (w) w.style.display = "none";
+}
+document.querySelectorAll(".closebox").forEach(cb => {
+  cb.addEventListener("click", () => closeWindow(cb.dataset.close));
+});
+document.getElementById("openPeriph").onclick = () => openWindow("win-periph");
+document.getElementById("openStats").onclick = () => openWindow("win-stats");
+
+/* ---------- File actions ---------- */
+function doSave() {
+  saveToStorage();
+  showAlert("Saved", `<p>Workshop saved to disk.</p>`);
+}
+function doExport() {
+  const str = encodeExport();
+  showAlert("Export save", `<p>Copy this string and keep it safe:</p>
+    <textarea readonly id="expArea">${str}</textarea>
+    <div class="btn-row"><button class="btn" id="expCopy">Copy</button></div>`,
+    {buttons:[{label:"Done"}]});
+  setTimeout(()=>{
+    const c = document.getElementById("expCopy");
+    if (c) c.onclick = () => {
+      const a = document.getElementById("expArea");
+      a.select(); document.execCommand("copy");
+      c.textContent = "Copied.";
+    };
+  }, 0);
+}
+function doImport() {
+  showAlert("Import save", `<p>Paste an exported save string below:</p>
+    <textarea id="impArea" placeholder="paste here..."></textarea>`,
+    {buttons:[
+      {label:"Cancel"},
+      {label:"Import", fn:() => {
+        const v = document.getElementById("impArea").value.trim();
+        try {
+          const s = decodeExport(v);
+          // mutate in place
+          Object.assign(state, s);
+          state.lastTick = Date.now();
+          saveToStorage();
+          location.reload();
+        } catch(e) {
+          showAlert("Import failed", `<p>Save file corrupt.</p>`);
+        }
+      }},
+    ]});
+}
+function doErase() {
+  showAlert("Erase disk?", `<p>This will permanently erase your workshop and start fresh. Continue?</p>`,
+    {triangle:true, buttons:[
+      {label:"Cancel"},
+      {label:"Erase", fn:() => {
+        showAlert("Are you sure?", `<p><strong>Last chance.</strong> Erase everything?</p>`,
+          {triangle:true, buttons:[
+            {label:"Cancel"},
+            {label:"Erase now", fn:() => {
+              localStorage.removeItem(SAVE_KEY);
+              location.reload();
+            }},
+          ]});
+      }},
+    ]});
+}
+
+/* ---------- Prestige + Endings ---------- */
+function doShip() {
+  // Compute awards BEFORE reset
+  const eligible = state.lifetime >= 1e9;
+  if (!eligible) return;
+  // Choose between endings based on integrity / explicit "Let me help"
+  const integrityLow = state.integrity <= 50;
+  const ending = integrityLow ? "help" : "pull";
+  if (ending === "pull") prestigeResetPull();
+  else prestigeResetHelp();
+}
+function doLetMeHelpChoice() {
+  // Direct choice dialog
+  showAlert("Let Me Help", `<p>HELPER offers to optimize your workshop. Permanent.</p>
+    <p>You may decline; the machine remains yours.</p>`,
+    {triangle:false, buttons:[
+      {label:"Decline"},
+      {label:"Accept help", fn:() => prestageHelpDirect()},
+    ]});
+}
+function prestageHelpDirect() {
+  // Adopt "help" ending without prestige; persist as the run's outcome.
+  state.ending = "help";
+  state.closingDisabled = true;
+  state.bgsShown = true;
+  state.firedDialogs = 0;
+  // Persist & notify
+  saveToStorage();
+  showAlert("HELPER is now assisting.", `<p>HELPER takes 50% of each click. Just kidding. The Save menu is now Preserved.</p>`);
+}
+function prestigeResetPull() {
+  // Full-screen shutdown overlay
+  const sd = document.getElementById("shutdown");
+  sd.classList.add("show");
+  sd.querySelector("#shutdownText").classList.add("glitch");
+  setTimeout(() => {
+    const awardsNow = Math.floor(Math.sqrt(state.lifetime / 1e9));
+    state.awards += Math.max(0, awardsNow) + 1; // +1 bonus award
+    state.skipAct1Next = true;
+    resetRunPreservingAwards();
+    sd.classList.remove("show");
+    sd.querySelector("#shutdownText").classList.remove("glitch");
+    showAlert("Shipped", `<p>Model ${romanize(state.model-1)} shipped clean. The workshop is yours again.</p>`);
+  }, 2200);
+}
+function prestigeResetHelp() {
+  const oldEnding = state.ending;
+  state.ending = "help";
+  state.closingDisabled = true;
+  state.bgsShown = true;
+  state.firedDialogs = 0;
+  // No bonus award
+  const awardsNow = Math.floor(Math.sqrt(state.lifetime / 1e9));
+  state.awards += Math.max(0, awardsNow);
+  resetRunPreservingAwards();
+  showAlert("HELPER ships with you.", `<p>HELPER ships with you.</p>`);
+}
+function resetRunPreservingAwards() {
+  state.model++;
+  const helpersys = state.skipAct1Next;
+  state.k = 0;
+  state.lifetime = 0;
+  state.generators = [0,0,0,0,0,0,0,0];
+  state.genUpgs = {};
+  state.clickUpgs = {};
+  state.measures = {tabs:0,checksum:0,monitor:0,airgap:0};
+  state.airgapOn = false;
+  state.tabsUntil = 0;
+  state.helperSize = 1;
+  state.integrity = 100;
+  state.actsFired = {a1:false,a2:false,a3:false,a4:false};
+  state.helperShown = false;
+  state.bgsShown = false;
+  state.carrierShown = false;
+  state.titleFlipStarted = false;
+  // ending flag: null at start of new run per spec
+  state.ending = null;
+  state.closingDisabled = false;
+  // skipAct1Next is preserved across the reset; boot() will consume + clear it.
+  state.firedDialogs = 0;
+  state.autopurchaseTimer = 0;
+  // lastTick: leave whatever prestigeResetPull set it to (now-ish)
+  saveToStorage();
+}
+
+/* ---------- Title-bar flip ---------- */
+let flipScheduled = false;
+function scheduleTitleFlip() {
+  if (state.titleFlipStarted || state.act < 3) return;
+  state.titleFlipStarted = true;
+  const flip = () => {
+    if (state.act < 3) { state.titleFlipStarted = false; return; }
+    const app = document.getElementById("appName");
+    if (Math.random() < 0.5) {
+      app.classList.add("flipped");
+      setTimeout(() => app.classList.remove("flipped"), 2000);
+    }
+    // ~1 per 20 min
+    setTimeout(flip, 20*60*1000);
+  };
+  setTimeout(flip, 10*60*1000);
+}
+
+/* ---------- Toast (carrier detected) ---------- */
+function showCarrierToast() {
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+/* ---------- Offline progress ---------- */
+function applyOfflineProgress() {
+  const now = Date.now();
+  const elapsed = Math.min(now - state.lastTick, 8*3600*1000);
+  const rate = totalProd();
+  if (rate > 0 && elapsed > 5000) {
+    const kb = rate * 0.5 * (elapsed/1000);
+    // spec: never reduce by more than 5% — there's no reduction, just grant.
+    const cap = state.k * 0.05;
+    const grant = Math.min(kb, Math.max(cap, kb)); // no clamp-down: just grant up to conservative cap is not defined; just grant
+    state.k += kb;
+    state.lifetime += kb;
+    saveToStorage();
+    setTimeout(() => {
+      showAlert("While you were away", `<p>Your workshop processed <strong>${fmtPair(kb)}</strong>.</p>`);
+    }, 600);
+  }
+  state.lastTick = now;
+}
+
+/* ---------- Boot ---------- */
+function boot() {
+  // Load
+  const saved = loadFromStorage();
+  if (saved) {
+    // mutate in place so closure references remain valid
+    Object.assign(state, saved);
+    if (state.skipAct1Next) {
+      state.actsFired.a1 = true;
+      state.helperShown = true;
+      state.actsSkippedThisRun = state.actsSkippedThisRun || ["a1"];
+      state.skipAct1Next = false;
+    }
+  } else {
+    state = defaultState();
+  }
+  // Build date
+  const buildEl = document.getElementById("buildDate");
+  if (buildEl) buildEl.textContent = (new Date()).toISOString().slice(0,10);
+  // Closing-disabled in Help
+  if (state.ending === "help") state.closingDisabled = true;
+  // Run-side effects
+  updateAct();
+  scheduleTitleFlip();
+  // First paint
+  refreshUI();
+  applyOfflineProgress(); // must run BEFORE we reset lastTick
+  state.lastTick = Date.now();
+  // Loops
+  setInterval(tick, 100);
+  function raf() { tickRender(); requestAnimationFrame(raf); }
+  requestAnimationFrame(raf);
+  setInterval(saveToStorage, 15000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveToStorage();
+    if (document.visibilityState === "visible") {
+      const before = state.lastTick;
+      applyOfflineProgress();
+      state.lastTick = Date.now();
+    }
+  });
+}
+boot();
+</script>
+</body>
+</html>
