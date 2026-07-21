@@ -154,12 +154,18 @@ button{font:inherit;color:inherit;background:transparent;border:0}
   background:var(--k);color:var(--p);
 }
 .gens .buy-btn:not(:disabled):active{
-  transform:translateY(1px);
+  transform:scale(.96);
 }
-/* Disabled state: dimmer but still clearly non-actionable so the user
-   can SEE that this row is not yet affordable. Not just a faded gray. */
-.gens .buy-btn:disabled{
-  opacity:.35;
+/* Same treatment for Install buttons in Peripherals. */
+.measure .btn:not(:disabled):hover{
+  background:var(--k);color:var(--p);
+}
+.measure .btn:not(:disabled):active{
+  transform:scale(.96);
+}
+.gens .buy-btn:disabled,
+.measure .btn:disabled{
+  opacity:.55;
   cursor:not-allowed;
   background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);
   background-size:4px 4px;
@@ -964,6 +970,32 @@ function dropdown(items) {
   }
   html += "</div>";
   return html;
+}
+/* === Click diagnostic overlay (?diag=1) === */
+if (location.search.indexOf("diag=1") !== -1) {
+  const log = document.createElement("div");
+  log.id = "__diag";
+  log.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:99999;background:#fff;color:#000;padding:8px 10px;border:2px solid #000;font-family:monospace;font-size:11px;max-width:520px;max-height:50vh;overflow:auto;line-height:1.4;box-shadow:2px 2px 0 #000;";
+  log.innerHTML = "<b>CLICK DIAG</b> &nbsp;<span id='__diagSum'>0 clicks</span><br><span id='__diagList'></span>";
+  document.body.appendChild(log);
+  const list = document.getElementById("__diagList");
+  const sum = document.getElementById("__diagSum");
+  let n = 0;
+  document.addEventListener("click", e => {
+    const t = e.target;
+    const isBuyBtn = t.closest(".buy-btn");
+    const isUpgBtn = t.closest(".upg-buy");
+    const isMeasureBtn = t.closest("[data-m]");
+    if (!isBuyBtn && !isUpgBtn && !isMeasureBtn) return;
+    const btn = isBuyBtn || isUpgBtn || isMeasureBtn;
+    const line = `[${new Date().toISOString().split("T")[1].slice(0,8)}] `
+      + "tag=" + btn.tagName + "." + btn.className
+      + " disabled=" + btn.disabled
+      + " x=" + e.clientX + " y=" + e.clientY
+      + "<br>";
+    list.insertAdjacentHTML("afterbegin", line);
+    n++; sum.textContent = n + " clicks";
+  }, true); // capture phase so we see clicks even if stopped
 }
 function closeAllMenus() {
   document.querySelectorAll(".dropdown.show").forEach(d => d.remove());
