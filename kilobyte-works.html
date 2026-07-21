@@ -881,10 +881,12 @@ function onBuy(gid) {
   recomputeUpgradesAffordable();
 }
 // Bulletproof pointerdown fallback: if for any reason the click event on a
-// Buy button is eaten (a misbehaving extension, a weird mouse driver, an
-// autoclicker that eats clicks, browser focus issues), pointerdown fires
-// earlier in the input pipeline and is harder to swallow. We fire it on
-// pointerdown on the document and dispatch through the same logic.
+// Buy / Install / Measure button is eaten (a misbehaving extension, a weird
+// mouse driver, an autoclicker that eats clicks, browser focus issues),
+// pointerdown fires earlier in the input pipeline and is harder to swallow.
+// We listen on document in capture phase for pointerdown on these buttons
+// and dispatch through the same logic. The inline onclick handler is the
+// primary path; this is just a safety net.
 document.addEventListener("pointerdown", e => {
   const t = e.target;
   if (!t || !t.closest) return;
@@ -892,6 +894,20 @@ document.addEventListener("pointerdown", e => {
   if (buy && !buy.disabled) {
     const gid = parseInt(buy.dataset.gid, 10);
     if (!isNaN(gid)) onBuy(gid);
+    return;
+  }
+  const upg = t.closest(".upg-buy");
+  if (upg && !upg.disabled) {
+    const key = upg.dataset.key;
+    const mult = parseFloat(upg.dataset.mult);
+    if (key) onUpgradeBuy(key, isNaN(mult) ? 2 : mult);
+    return;
+  }
+  const meas = t.closest("button[data-m]");
+  if (meas && !meas.disabled) {
+    const k = meas.dataset.m;
+    if (k) onMeasureBuy(k);
+    return;
   }
 }, true);
 
