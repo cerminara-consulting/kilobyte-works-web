@@ -266,7 +266,7 @@ dl.stats dt{font-weight:700}
   <!-- HELPER.SYS desktop file (appears Act 1). Sits well below the menu bar so
        it doesn't collide with Workshop's titlebar after the workshop is closed. -->
   <div id="helperFile" class="desktop-file hidden" style="left:16px;top:140px"
-       tabindex="0" role="button" aria-label="HELPER.SYS">
+       tabindex="0" role="button" aria-label="HELPER.SYS" onclick="helperClick()">
     <div class="ico"></div>
     <div class="lbl">HELPER.SYS<br><span id="helperSize">1 KB</span></div>
   </div>
@@ -274,11 +274,11 @@ dl.stats dt{font-weight:700}
   <!-- Workshop window -->
   <div class="window" id="win-workshop" style="display:block">
     <div class="titlebar">
-      <div class="closebox" data-close="win-workshop" aria-label="Close">×</div>
+      <div class="closebox" data-close="win-workshop" aria-label="Close" onclick="closeWindow('win-workshop')">×</div>
       <div class="title">Workshop — Model <span id="modelNo">I</span></div>
     </div>
     <div class="body">
-      <button class="process" id="processBtn" aria-label="Process kilobytes">Process</button>
+      <button class="process" id="processBtn" aria-label="Process kilobytes" onclick="doClick()">Process</button>
       <div class="intbar" id="intbar">
         <div class="intlabel">System Integrity: <span id="intVal">100%</span></div>
         <div class="inttrack"><div class="intfill" id="intFill"></div></div>
@@ -293,7 +293,7 @@ dl.stats dt{font-weight:700}
   <!-- Peripherals window -->
   <div class="window" id="win-periph" style="display:none">
     <div class="titlebar">
-      <div class="closebox" data-close="win-periph" aria-label="Close">×</div>
+      <div class="closebox" data-close="win-periph" aria-label="Close" onclick="closeWindow('win-periph')">×</div>
       <div class="title">Peripherals</div>
     </div>
     <div class="body">
@@ -306,7 +306,7 @@ dl.stats dt{font-weight:700}
       <div id="measureList"></div>
       <hr style="border:0;border-top:1.5px solid var(--k);margin:14px 0">
       <div id="airgapRow">
-        <button class="btn" id="airgapBtn" disabled>Air gap: off</button>
+        <button class="btn" id="airgapBtn" disabled onclick="toggleAirgap()">Air gap: off</button>
         <span style="font-size:12px;margin-left:8px">Disables modem-tier and above while active.</span>
       </div>
     </div>
@@ -315,7 +315,7 @@ dl.stats dt{font-weight:700}
   <!-- Statistics window -->
   <div class="window" id="win-stats" style="display:none">
     <div class="titlebar">
-      <div class="closebox" data-close="win-stats" aria-label="Close">×</div>
+      <div class="closebox" data-close="win-stats" aria-label="Close" onclick="closeWindow('win-stats')">×</div>
       <div class="title">Statistics</div>
     </div>
     <div class="body">
@@ -338,7 +338,7 @@ dl.stats dt{font-weight:700}
   <!-- About window -->
   <div class="window" id="win-about" style="display:none">
     <div class="titlebar">
-      <div class="closebox" data-close="win-about" aria-label="Close">×</div>
+      <div class="closebox" data-close="win-about" aria-label="Close" onclick="closeWindow('win-about')">×</div>
       <div class="title">About Kilobyte Works</div>
     </div>
     <div class="body">
@@ -354,9 +354,9 @@ dl.stats dt{font-weight:700}
     <div>KB/s: <span id="rateReadout">0</span></div>
     <div>Act: <span id="actReadout">0</span></div>
     <div style="flex:1"></div>
-    <button class="btn" id="openWorkshop">Workshop</button>
-    <button class="btn" id="openPeriph">Peripherals</button>
-    <button class="btn" id="openStats">Statistics</button>
+    <button class="btn" id="openWorkshop" onclick="openWindow('win-workshop')">Workshop</button>
+    <button class="btn" id="openPeriph" onclick="openWindow('win-periph')">Peripherals</button>
+    <button class="btn" id="openStats" onclick="openWindow('win-stats')">Statistics</button>
   </div>
 
 </div>
@@ -761,16 +761,14 @@ function renderMeasures() {
     const bought = state.measures[k];
     const inlineCost = k === "tabs" ? fmtPair(state.k * 0.05) : fmtPair(m.cost);
     html += `<div class="measure">
-      <h4>${m.label} ${bought?"\u2713":""}</h4>
+      <h4>${m.label} ${bought?"✓":""}</h4>
       <p>${m.desc}</p>
       <p style="font-size:11px;margin-top:4px">Cost: ${inlineCost}</p>
-      <button class="btn" data-m="${k}" ${locked||bought?"disabled":""}>${bought?"Installed":"Install"}</button>
+      <button class="btn" data-m="${k}" type="button" ${locked||bought?"disabled":""} onclick="onMeasureBuy('${k}')">${bought?"Installed":"Install"}</button>
     </div>`;
   }
   measureList.innerHTML = html;
-  measureList.querySelectorAll("button[data-m]").forEach(b => {
-    b.onclick = () => onMeasureBuy(b.dataset.m);
-  });
+  // Inline onclick set in template — no per-element handler binding required.
   airgapBtn.disabled = state.act < 3 || !state.measures.airgap;
   airgapBtn.textContent = `Air gap: ${state.airgapOn?"ON":"off"}`;
   if (!state.airgapOn && state.measures.airgap && state.act >= 3) airgapBtn.classList.remove("disabled");
@@ -933,7 +931,7 @@ function autoBuy() {
 }
 function recomputeUpgradesAffordable() { renderUpgrades(); }
 
-/* ---------- Process button ---------- */
+/* ---------- Process button (inline onclick="doClick()" is primary) ---------- */
 const processBtn = document.getElementById("processBtn");
 function doClick() {
   const gain = 1 * clickMultiplier();
@@ -942,21 +940,19 @@ function doClick() {
   state.stats.clicks++;
   if (typeof window.flashProcess === "function") window.flashProcess();
 }
-processBtn.addEventListener("click", doClick);
-processBtn.addEventListener("keydown", e => {
-  if (e.key === " " || e.key === "Enter") { e.preventDefault(); doClick(); }
-});
-// also: pointer click anywhere on workshop? No — keep button the only entrypoint.
+// Space/Enter activates the focused button natively (no extra JS handler).
 
-/* ---------- Keyboard: Space activates focused Process ---------- */
+/* ---------- Air gap toggle (button is in static HTML with inline onclick) ---------- */
+function toggleAirgap() {
+  if (state.act < 3 || !state.measures.airgap) return;
+  state.airgapOn = !state.airgapOn;
+  renderMeasures(); // refresh label / disabled state
+}
 
-/* ---------- HELPER.SYS click ---------- */
-helperFileEl.addEventListener("click", () => {
+/* ---------- HELPER.SYS click (div is in static HTML with inline onclick) ---------- */
+function helperClick() {
   showAlert("HELPER.SYS", `<p>This file is in use and cannot be opened.</p><p>Size: ${fmtPair(state.helperSize)}</p>`);
-});
-helperFileEl.addEventListener("keydown", e => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); helperFileEl.click(); }
-});
+}
 
 /* ---------- Menus ---------- */
 function buildMenus() {
@@ -1100,12 +1096,8 @@ function closeWindow(id) {
   const w = document.getElementById(id);
   if (w) w.style.display = "none";
 }
-document.querySelectorAll(".closebox").forEach(cb => {
-  cb.addEventListener("click", () => closeWindow(cb.dataset.close));
-});
-document.getElementById("openPeriph").onclick = () => openWindow("win-periph");
-document.getElementById("openStats").onclick = () => openWindow("win-stats");
-document.getElementById("openWorkshop").onclick = () => openWindow("win-workshop");
+// All static buttons (Workshop/Peripherals/Statistics status-bar, × close)
+// use inline onclick="" set in the HTML. No extra JS wiring required.
 
 /* ---------- File actions ---------- */
 function doSave() {
