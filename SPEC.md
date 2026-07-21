@@ -16,7 +16,7 @@ The player runs a small computer workshop in 1986. The entire game is presented 
 
 Beneath the clicker loop runs a slow-burn horror storyline: something is growing inside the machine. An experimental process called HELPER arrives through the hardware the player buys (modem → network bridge → mainframe timeshare) and gradually tries to take over the system. The story is never delivered as lore text — it is revealed entirely through the interface misbehaving. See Narrative specification.
 
-Core resource: **kilobytes (KB) processed**. Clicking the central "Process" button generates KB. Generators (period hardware) produce KB automatically. Currency and lifetime totals display with era-appropriate unit rollover: KB → MB → GB → TB → PB, each at 1024x, formatted to 3 significant figures (e.g., "4.21 MB").
+Core resource: **kilobytes (KB) processed**. Clicking the central "Process" button generates KB. Generators (period hardware) produce KB automatically. Currency and lifetime totals display with era-appropriate unit rollover: KB → MB → GB → TB → PB, each at 1024x, formatted to 3 significant figures with trailing zeros preserved (e.g., "4.21 MB" or "4.20 MB" — never "4.2 MB").
 
 ## Aesthetic specification (non-negotiable)
 
@@ -78,7 +78,7 @@ Hermes may fine-tune base rates ±30% during playtesting but must keep the 1.15 
 ### Feel requirements
 - The KB counter must tick smoothly (requestAnimationFrame interpolation), not jump once per second.
 - Every purchase gives immediate visual feedback: the row flashes inverted for one frame-pair.
-- Number formatting everywhere: 3 significant figures with unit rollover; never show float artifacts.
+- Number formatting everywhere: 3 significant figures with unit rollover; trailing zeros are preserved so every rendered value has a consistent decimal width; never show float artifacts (no scientific notation, no precision dust like `4.2000000001`).
 - Game loop: fixed 100ms simulation tick, decoupled from render.
 
 ## Narrative specification — "HELPER"

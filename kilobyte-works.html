@@ -126,6 +126,18 @@ button{font:inherit;color:inherit;background:transparent;border:0}
   background-image:repeating-conic-gradient(var(--p) 0% 25%,transparent 0% 50%);background-size:3px 3px}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
+/* Buy buttons live in narrow table cells — give them real hit area */
+.gens td:last-child{width:110px;padding:4px 6px}
+.gens .buy-btn{
+  display:block;width:100%;
+  padding:8px 6px;font-size:14px;
+  text-align:center;
+  border-width:2px;
+}
+.gens .buy-btn:not(:disabled):hover{
+  background:var(--k);color:var(--p);
+}
+
 /* Generator list */
 table.gens{width:100%;border-collapse:collapse}
 .gens th,.gens td{
@@ -307,6 +319,7 @@ dl.stats dt{font-weight:700}
     <div>KB/s: <span id="rateReadout">0</span></div>
     <div>Act: <span id="actReadout">0</span></div>
     <div style="flex:1"></div>
+    <button class="btn" id="openWorkshop">Workshop</button>
     <button class="btn" id="openPeriph">Peripherals</button>
     <button class="btn" id="openStats">Statistics</button>
   </div>
@@ -502,19 +515,21 @@ function prodMultiplier() {
 }
 function fmt(n) {
   if (!isFinite(n) || n < 0) return {num:"0", unit:"KB"};
+  if (n === 0) return {num:"0", unit:"KB"};
   n = Math.max(0, n);
   const units = ["KB","MB","GB","TB","PB"];
   let u = 0;
   let v = n;
   while (v >= 1024 && u < units.length-1) { v /= 1024; u++; }
-  // 3 significant figures on the mantissa
   let str;
   if (v >= 100) str = v.toFixed(0);
   else if (v >= 10) str = v.toFixed(1);
-  else str = v.toPrecision(3);
-  // strip trailing zeros after decimal, but keep single .0 away if present
-  str = str.replace(/\.?0+$/,"");
-  if (str === "" || str === "-") str = "0";
+  else {
+    str = v.toPrecision(3);
+    // Guard against precision() returning scientific notation (e.g. "1.00e+2")
+    // for very small v near the rollover boundary — fall back to fixed format.
+    if (!/[\.]/.test(str) || /e/i.test(str)) str = v.toFixed(2);
+  }
   return {num:str, unit:units[u]};
 }
 function fmtPair(n){ const f = fmt(n); return f.num + " " + f.unit; }
@@ -1015,6 +1030,7 @@ document.querySelectorAll(".closebox").forEach(cb => {
 });
 document.getElementById("openPeriph").onclick = () => openWindow("win-periph");
 document.getElementById("openStats").onclick = () => openWindow("win-stats");
+document.getElementById("openWorkshop").onclick = () => openWindow("win-workshop");
 
 /* ---------- File actions ---------- */
 function doSave() {
