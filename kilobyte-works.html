@@ -702,7 +702,9 @@ const airgapBtn=document.getElementById("airgapBtn");
 const airgapRow=document.getElementById("airgapRow");
 
 function renderGenRows() {
-  // Build rows lazily — no inline handlers, just stable data attrs.
+  // Build rows lazily — handlers live on a delegated document listener
+  // set up in boot(), not on the buttons themselves, so re-renders and
+  // detached listeners can't drop the click.
   let html = "";
   for (let i=0;i<8;i++) {
     const owned = state.generators[i];
@@ -718,11 +720,10 @@ function renderGenRows() {
     </tr>`;
   }
   genBody.innerHTML = html;
-  // Per-element onclick kept as a fallback for any environment that doesn't
-  // bubble pointerup correctly. The delegated handler below is the primary.
-  genBody.querySelectorAll(".buy-btn").forEach(b => {
-    b.onclick = () => onBuy(parseInt(b.dataset.gid,10));
-  });
+  // (No per-element onclick. The document-level delegated handler in boot()
+  // is the single source of truth. This avoids both: (a) the listener being
+  // dropped when genBody is re-rendered, and (b) the listener running twice
+  // (per-element + delegated) for the same click.)
 }
 function flashRow(gid) {
   const tr = genBody.querySelector(`tr[data-gid="${gid}"]`);
@@ -738,7 +739,7 @@ function renderUpgrades() {
     if (bought) return;
     const aff = owned >= u.threshold;
     avail += `<div class="measure"><h4>${u.label}</h4><p>${u.desc}. Requires ${u.threshold} ${GEN[u.gid].name.toLowerCase()}.</p>
-      <button class="btn upg-buy" data-key="${key}" data-mult="2" ${aff?"":"disabled"}>Install</button></div>`;
+      <button class="btn upg-buy" data-key="${key}" data-mult="2" ${aff?"":"disabled"} type="button">Install</button></div>`;
   });
   CLICK_UPGRADES.forEach((u, idx) => {
     const key = "cu"+idx;
@@ -746,22 +747,16 @@ function renderUpgrades() {
     if (bought) return;
     const aff = state.lifetime >= u.gate;
     avail += `<div class="measure"><h4>${u.name}</h4><p>Click power \u00d72. Requires ${fmtPair(u.gate)} lifetime.</p>
-      <button class="btn upg-buy" data-key="${key}" data-mult="${u.mult}" ${aff?"":"disabled"}>Install</button></div>`;
+      <button class="btn upg-buy" data-key="${key}" data-mult="${u.mult}" ${aff?"":"disabled"} type="button">Install</button></div>`;
   });
   if (!avail) avail = "<em>(none available)</em>";
   upgList.innerHTML = avail;
-  upgList.querySelectorAll(".upg-buy").forEach(b => {
-    b.onclick = () => onUpgradeBuy(b.dataset.key, parseFloat(b.dataset.mult));
-  });
+  // (No per-element onclick — see comment in renderGenRows.)
   // Installed
   const installed = [];
   GEN_UPGRADES.forEach((u,idx)=>{ if (state.genUpgs["gu"+idx]) installed.push(u.label); });
   CLICK_UPGRADES.forEach((u,idx)=>{ if (state.clickUpgs["cu"+idx]) installed.push(u.name); });
   upgInstalled.innerHTML = installed.length ? installed.map(n=>`<div style="font-size:12px">\u2713 ${n}</div>`).join("") : "<em>(none)</em>";
-  // Bind
-  upgList.querySelectorAll(".upg-buy").forEach(b => {
-    b.onclick = () => onUpgradeBuy(b.dataset.key, parseFloat(b.dataset.mult));
-  });
 }
 function renderMeasures() {
   const locked = state.act < 3;
