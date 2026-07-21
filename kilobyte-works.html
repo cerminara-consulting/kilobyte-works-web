@@ -882,6 +882,21 @@ function onBuy(gid) {
   flashRow(gid);
   recomputeUpgradesAffordable();
 }
+// Bulletproof pointerdown fallback: if for any reason the click event on a
+// Buy button is eaten (a misbehaving extension, a weird mouse driver, an
+// autoclicker that eats clicks, browser focus issues), pointerdown fires
+// earlier in the input pipeline and is harder to swallow. We fire it on
+// pointerdown on the document and dispatch through the same logic.
+document.addEventListener("pointerdown", e => {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const buy = t.closest(".buy-btn");
+  if (buy && !buy.disabled) {
+    const gid = parseInt(buy.dataset.gid, 10);
+    if (!isNaN(gid)) onBuy(gid);
+  }
+}, true);
+
 function onUpgradeBuy(key, mult) {
   if (key.startsWith("gu")) {
     state.genUpgs[key] = "double";
