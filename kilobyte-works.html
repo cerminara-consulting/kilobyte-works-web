@@ -702,20 +702,24 @@ const airgapBtn=document.getElementById("airgapBtn");
 const airgapRow=document.getElementById("airgapRow");
 
 function renderGenRows() {
+  // Build rows lazily — no inline handlers, just stable data attrs.
   let html = "";
   for (let i=0;i<8;i++) {
     const owned = state.generators[i];
     const cost = costFor(i);
     const rate = prodFor(i) * state.generators[i];
-    html += `<tr data-gid="${i}">
+    const enabled = state.k >= cost;
+    html += `<tr data-gid="${i}" data-cost="${cost}">
       <td>${GEN[i].name}</td>
       <td class="owned">${owned}</td>
       <td class="rate">${fmtPair(rate)}</td>
       <td class="cost">${fmtPair(cost)}</td>
-      <td><button class="btn buy-btn" data-gid="${i}" ${state.k < cost ? "disabled":""}>Buy</button></td>
+      <td><button class="btn buy-btn" data-gid="${i}" ${enabled ? "" : "disabled"} type="button">Buy</button></td>
     </tr>`;
   }
   genBody.innerHTML = html;
+  // Per-element onclick kept as a fallback for any environment that doesn't
+  // bubble pointerup correctly. The delegated handler below is the primary.
   genBody.querySelectorAll(".buy-btn").forEach(b => {
     b.onclick = () => onBuy(parseInt(b.dataset.gid,10));
   });
@@ -971,7 +975,12 @@ function dropdown(items) {
   html += "</div>";
   return html;
 }
-/* === Click diagnostic overlay (?diag=1) === */
+/* === Click diagnostic overlay (?diag=1) ===
+   Show in the bottom-left; record EVERY click with its target tag/class
+   and current disabled state, so we can see whether clicks reach the
+   page at all, whether they reach the button, and whether the button
+   is disabled. Capture-phase listener so we see events even if some
+   other handler stops propagation later. */
 if (location.search.indexOf("diag=1") !== -1) {
   const log = document.createElement("div");
   log.id = "__diag";
@@ -983,19 +992,19 @@ if (location.search.indexOf("diag=1") !== -1) {
   let n = 0;
   document.addEventListener("click", e => {
     const t = e.target;
-    const isBuyBtn = t.closest(".buy-btn");
-    const isUpgBtn = t.closest(".upg-buy");
-    const isMeasureBtn = t.closest("[data-m]");
-    if (!isBuyBtn && !isUpgBtn && !isMeasureBtn) return;
-    const btn = isBuyBtn || isUpgBtn || isMeasureBtn;
-    const line = `[${new Date().toISOString().split("T")[1].slice(0,8)}] `
-      + "tag=" + btn.tagName + "." + btn.className
-      + " disabled=" + btn.disabled
-      + " x=" + e.clientX + " y=" + e.clientY
+    const cls = (t.className && t.className.toString) ? t.className.toString() : "";
+    const line = "[" + new Date().toISOString().split("T")[1].slice(0,8) + "] "
+      + "<b>" + t.tagName + (cls ? "." + cls.split(" ").slice(0,3).join(".") : "") + "</b>"
+      + (t.disabled === true ? " [DISABLED]" : "")
+      + (t.dataset && t.dataset.gid !== undefined ? " gid=" + t.dataset.gid : "")
+      + (t.dataset && t.dataset.key !== undefined ? " key=" + t.dataset.key : "")
+      + (t.dataset && t.dataset.m !== undefined ? " m=" + t.dataset.m : "")
+      + " (" + e.clientX + "," + e.clientY + ")"
+      + (t.closest && t.closest("button") ? " &lt;button&gt;" : "")
       + "<br>";
     list.insertAdjacentHTML("afterbegin", line);
     n++; sum.textContent = n + " clicks";
-  }, true); // capture phase so we see clicks even if stopped
+  }, true);
 }
 function closeAllMenus() {
   document.querySelectorAll(".dropdown.show").forEach(d => d.remove());
@@ -1282,7 +1291,42 @@ function applyOfflineProgress() {
 
 /* ---------- Boot ---------- */
 function boot() {
-  // Load
+  // Delegated click handlers for Buy/Install/etc. Single source of truth —
+  // these survive re-rendering and avoid per-element onclick assignment, which
+  // can drop on some browsers or extensions. Per-element onclick is removed
+  // from renderGenRows so we don't double-fire.
+  // Capture phase so we run BEFORE the document-level menu handler.
+  document.addEventListener("click", e => {
+    const t = e.target;
+    const buy = t.closest && t.closest(".buy-btn");
+    if (buy) {
+      e.stopPropagation();
+      if (!buy.disabled) {
+        const gid = parseInt(buy.dataset.gid, 10);
+        if (!isNaN(gid)) onBuy(gid);
+      }
+      return;
+    }
+    const upg = t.closest && t.closest(".upg-buy");
+    if (upg) {
+      e.stopPropagation();
+      if (!upg.disabled) {
+        const key = upg.dataset.key;
+        const mult = parseFloat(upg.dataset.mult);
+        if (key) onUpgradeBuy(key, isNaN(mult) ? 2 : mult);
+      }
+      return;
+    }
+    const meas = t.closest && t.closest("button[data-m]");
+    if (meas) {
+      e.stopPropagation();
+      if (!meas.disabled) {
+        const k = meas.dataset.m;
+        if (k) onMeasureBuy(k);
+      }
+      return;
+    }
+  }, true);
   const saved = loadFromStorage();
   if (saved) {
     // mutate in place so closure references remain valid
