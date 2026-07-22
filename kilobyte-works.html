@@ -256,10 +256,10 @@ dl.stats dt{font-weight:700}
 
   <div id="menu" role="menubar" aria-label="Application menu">
     <div class="appName" id="appName">Kilobyte Works</div>
-    <div class="mi" data-menu="file">File</div>
-    <div class="mi" data-menu="edit">Edit</div>
-    <div class="mi" data-menu="special">Special</div>
-    <div class="mi" data-menu="help">Help</div>
+    <div class="mi" data-menu="file"    onclick="openMenu('file')">File</div>
+    <div class="mi" data-menu="edit"    onclick="openMenu('edit')">Edit</div>
+    <div class="mi" data-menu="special" onclick="openMenu('special')">Special</div>
+    <div class="mi" data-menu="help"    onclick="openMenu('help')">Help</div>
   </div>
   <div id="toast" class="toast">CARRIER DETECTED</div>
 
@@ -984,10 +984,16 @@ function buildMenus() {
   });
 }
 function dropdown(items) {
-  // Build a dropdown HTML
+  // Build a dropdown HTML. Each item carries inline onclick so the click
+  // reaches its handler without going through any document-level delegator.
+  // Disabled items get an onclick that does nothing and a `disabled` class.
   let html = '<div class="dropdown show">';
   for (const it of items) {
-    html += `<div class="di ${it.disabled?"disabled":""}" data-id="${it.id}">${it.label}</div>`;
+    const dis = it.disabled ? "disabled" : "";
+    // Escape the id defensively so a stray quote in a future label can't break the attribute.
+    const safeId = String(it.id).replace(/"/g, "&quot;");
+    const oc = it.disabled ? "" : ` onclick="diClick('${safeId}')"`;
+    html += `<div class="di ${dis}" data-id="${safeId}"${oc}>${it.label}</div>`;
   }
   html += "</div>";
   return html;
@@ -1026,26 +1032,34 @@ if (location.search.indexOf("diag=1") !== -1) {
 function closeAllMenus() {
   document.querySelectorAll(".dropdown.show").forEach(d => d.remove());
 }
-document.addEventListener("click", e => {
-  const mi = e.target.closest(".mi");
-  if (mi) {
-    e.stopPropagation();
-    closeAllMenus();
-    const key = mi.dataset.menu;
-    if (key === "edit" && state.act < 3) return; // grayed
-    const dd = dropdown(menuItemsFor(key));
-    mi.appendChild(dd);
-    return;
-  }
-  const di = e.target.closest(".di");
-  if (di) {
-    e.stopPropagation();
-    closeAllMenus();
-    const id = di.dataset.id;
-    menuAction(id);
-    return;
-  }
+/* Menu handling — inline onclick on every .mi and every .di.
+   No document-level click delegator (caused "menu click does nothing" in
+   the same way that the original Buy/Install delegator did). */
+function openMenu(key) {
+  // Close any other open menu first, then open this one.
   closeAllMenus();
+  // Edit menu is grayed out below act 3 — bail without opening.
+  if (key === "edit" && state.act < 3) return;
+  // Find the .mi div by data-menu attribute (avoids relying on inline `this`).
+  const mi = document.querySelector('.mi[data-menu="' + key + '"]');
+  if (!mi) return;
+  const dd = dropdown(menuItemsFor(key));
+  mi.insertAdjacentHTML("beforeend", dd);
+}
+function diClick(id) {
+  // Inline onclick on each dropdown item routes here.
+  closeAllMenus();
+  menuAction(id);
+}
+// Close menus when clicking outside #menu — light fallback only. Inline
+// onclick on .mi and .di is the primary path; this is just UX polish so a
+// stray click somewhere else dismisses the dropdown. Kept as pointerdown
+// (fires before click) and as a *no-op* if it doesn't run — the game still
+// works either way.
+document.addEventListener("pointerdown", e => {
+  if (!e.target.closest("#menu") && !e.target.closest(".dropdown")) {
+    closeAllMenus();
+  }
 });
 function menuItemsFor(key) {
   if (key === "file") {
