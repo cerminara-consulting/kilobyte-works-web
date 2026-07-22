@@ -972,7 +972,12 @@ function helperClick() {
 
 /* ---------- Menus ---------- */
 function buildMenus() {
-  closeAllMenus();
+  // NOTE: buildMenus used to call closeAllMenus() here, but refreshUI() runs
+  // this every animation frame (60Hz), which was killing any open dropdown
+  // the moment the user opened it. The dropdown's lifecycle is owned by
+  // openMenu / diClick / the outside-click pointerdown listener — NOT by
+  // refreshUI. So we just toggle the Edit-disabled visual state here and
+  // leave existing dropdowns alone.
   const editDisabled = state.act < 3;
   // Edit menu items update
   document.querySelectorAll('.mi').forEach(mi => {
